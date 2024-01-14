@@ -46,6 +46,8 @@ const (
 func ParseText(osuText string) (OsuFile, error) {
 	returnOsuFile := OsuFile{}
 
+	osuText = strings.ReplaceAll(osuText, "\r", "")
+
 	lines := strings.Split(osuText, "\n")
 	currentSection := SectionGeneral
 
