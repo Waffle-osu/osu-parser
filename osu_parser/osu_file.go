@@ -47,6 +47,8 @@ func ParseText(osuText string) (OsuFile, error) {
 	returnOsuFile := OsuFile{}
 
 	osuText = strings.ReplaceAll(osuText, "\r", "")
+	//what the fuck, "Maeken Trance Project - Koi no Maiahi - Insane.osu" does this for some reason
+	osuText = strings.ReplaceAll(osuText, "\uf3ff", "")
 
 	lines := strings.Split(osuText, "\n")
 	currentSection := SectionGeneral
