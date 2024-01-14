@@ -106,7 +106,7 @@ type CustomSampleSet int32
 type CurveType int32
 
 const (
-	HitObjectTypeCircle         HitObjectType = 0
+	HitObjectTypeCircle         HitObjectType = 1
 	HitObjectTypeSlider         HitObjectType = 2
 	HitObjectTypeNewCombo       HitObjectType = 4
 	HitObjectTypeCircleNewCombo HitObjectType = 5

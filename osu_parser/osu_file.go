@@ -40,6 +40,7 @@ const (
 	SectionEvents       = 4
 	SectionTimingPoints = 5
 	SectionHitObjects   = 6
+	SectionIgnore       = 7
 )
 
 func ParseText(osuText string) (OsuFile, error) {
@@ -114,6 +115,8 @@ func ParseText(osuText string) (OsuFile, error) {
 		case "[HitObjects]":
 			currentSection = SectionHitObjects
 			continue
+		case "[Colours]":
+			currentSection = SectionIgnore
 		}
 
 		key := ""
@@ -130,6 +133,8 @@ func ParseText(osuText string) (OsuFile, error) {
 		}
 
 		switch currentSection {
+		case SectionIgnore:
+			continue
 		case SectionGeneral:
 			general := &returnOsuFile.General
 
@@ -420,14 +425,11 @@ func ParseText(osuText string) (OsuFile, error) {
 				toSwitchHitObjectType = HitObjectTypeHold
 			}
 
-			if len(split) > 5 && len(split[5]) > 0 {
+			if len(split) > 4 {
 				switch toSwitchHitObjectType {
 				//Circle Specific things
 				case HitObjectTypeCircle:
 					//Per object hitsounding data
-
-					hitSoundsSplit := strings.Split(split[5], ":")
-					lenHsSplit := len(hitSoundsSplit)
 
 					sampleSetInt := int32(0)
 					sampleSetAdditionInt := int32(0)
@@ -435,17 +437,22 @@ func ParseText(osuText string) (OsuFile, error) {
 					volume := int32(0)
 					sample := ""
 
-					parseInt(i, "HitObjects: Per-object hitsounds 0", hitSoundsSplit[0], &sampleSetInt)
-					parseInt(i, "HitObjects: Per-object hitsounds 1", hitSoundsSplit[1], &sampleSetAdditionInt)
+					if len(split) > 5 && len(split[5]) > 0 {
+						hitSoundsSplit := strings.Split(split[5], ":")
+						lenHsSplit := len(hitSoundsSplit)
 
-					if lenHsSplit > 2 {
-						parseInt(i, "HitObjects: Per-object hitsounds 2", hitSoundsSplit[2], &customSampleSetInt)
+						parseInt(i, "HitObjects: Per-object hitsounds 0", hitSoundsSplit[0], &sampleSetInt)
+						parseInt(i, "HitObjects: Per-object hitsounds 1", hitSoundsSplit[1], &sampleSetAdditionInt)
 
-						if lenHsSplit > 3 {
-							parseInt(i, "HitObjects: Per-object hitsounds 3", hitSoundsSplit[3], &volume)
+						if lenHsSplit > 2 {
+							parseInt(i, "HitObjects: Per-object hitsounds 2", hitSoundsSplit[2], &customSampleSetInt)
 
-							if lenHsSplit > 4 {
-								sample = hitSoundsSplit[4]
+							if lenHsSplit > 3 {
+								parseInt(i, "HitObjects: Per-object hitsounds 3", hitSoundsSplit[3], &volume)
+
+								if lenHsSplit > 4 {
+									sample = hitSoundsSplit[4]
+								}
 							}
 						}
 					}
