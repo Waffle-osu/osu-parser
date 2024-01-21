@@ -163,7 +163,12 @@ type HitObject struct {
 }
 
 type HitObjectsSection struct {
-	HitObjects []HitObject
+	CountNormal  int64
+	CountSlider  int64
+	CountSpinner int64
+	CountHold    int64
+
+	List []HitObject
 }
 
 type TimeSignature int32

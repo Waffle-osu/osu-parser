@@ -1,6 +1,8 @@
 package osu_parser
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
@@ -10,6 +12,7 @@ import (
 
 type OsuFile struct {
 	Version int32
+	Md5Hash string
 
 	General      GeneralSection
 	Editor       EditorSection
@@ -18,6 +21,10 @@ type OsuFile struct {
 	Events       EventsSection
 	TimingPoints TimingPointSection
 	HitObjects   HitObjectsSection
+
+	Length      int64
+	DrainLength int64
+	FirstBpm    float64
 
 	ParserWarnings []string
 }
@@ -29,7 +36,11 @@ func ParseFile(filename string) (OsuFile, error) {
 		return OsuFile{}, err
 	}
 
-	return ParseText(string(data))
+	return ParseBytes(data)
+}
+
+func ParseBytes(bytes []byte) (OsuFile, error) {
+	return ParseText(string(bytes))
 }
 
 const (
@@ -44,7 +55,12 @@ const (
 )
 
 func ParseText(osuText string) (OsuFile, error) {
-	returnOsuFile := OsuFile{}
+	hashed := md5.Sum([]byte(osuText))
+	hashedHex := hex.EncodeToString(hashed[:])
+
+	returnOsuFile := OsuFile{
+		Md5Hash: hashedHex,
+	}
 
 	osuText = strings.ReplaceAll(osuText, "\r", "")
 	//what the fuck, "Maeken Trance Project - Koi no Maiahi - Insane.osu" does this for some reason
@@ -414,18 +430,26 @@ func ParseText(osuText string) (OsuFile, error) {
 			toSwitchHitObjectType := HitObjectTypeCircle
 
 			if (hitObjectTypeInt & int32(HitObjectTypeCircle)) > 0 {
+				returnOsuFile.HitObjects.CountNormal++
+
 				toSwitchHitObjectType = HitObjectTypeCircle
 			}
 
 			if (hitObjectTypeInt & int32(HitObjectTypeSlider)) > 0 {
+				returnOsuFile.HitObjects.CountSlider++
+
 				toSwitchHitObjectType = HitObjectTypeSlider
 			}
 
 			if (hitObjectTypeInt & int32(HitObjectTypeSpinner)) > 0 {
+				returnOsuFile.HitObjects.CountSpinner++
+
 				toSwitchHitObjectType = HitObjectTypeSpinner
 			}
 
 			if (hitObjectTypeInt & int32(HitObjectTypeHold)) > 0 {
+				returnOsuFile.HitObjects.CountHold++
+
 				toSwitchHitObjectType = HitObjectTypeHold
 			}
 
@@ -461,7 +485,7 @@ func ParseText(osuText string) (OsuFile, error) {
 						}
 					}
 
-					hitObjects.HitObjects = append(hitObjects.HitObjects, HitObject{
+					hitObjects.List = append(hitObjects.List, HitObject{
 						Position: Vec2{
 							X: posX,
 							Y: posY,
@@ -599,7 +623,7 @@ func ParseText(osuText string) (OsuFile, error) {
 						}
 					}
 
-					hitObjects.HitObjects = append(hitObjects.HitObjects, HitObject{
+					hitObjects.List = append(hitObjects.List, HitObject{
 						Position: Vec2{
 							X: posX,
 							Y: posY,
@@ -656,7 +680,7 @@ func ParseText(osuText string) (OsuFile, error) {
 						}
 					}
 
-					hitObjects.HitObjects = append(hitObjects.HitObjects, HitObject{
+					hitObjects.List = append(hitObjects.List, HitObject{
 						Position: Vec2{
 							X: posX,
 							Y: posY,
@@ -704,7 +728,7 @@ func ParseText(osuText string) (OsuFile, error) {
 						}
 					}
 
-					hitObjects.HitObjects = append(hitObjects.HitObjects, HitObject{
+					hitObjects.List = append(hitObjects.List, HitObject{
 						Position: Vec2{
 							X: posX,
 							Y: posY,
@@ -725,6 +749,29 @@ func ParseText(osuText string) (OsuFile, error) {
 				}
 			}
 		}
+	}
+
+	//Commonly used computed things (length, drain length, bpm)
+	if len(returnOsuFile.TimingPoints.TimingPoints) != 0 {
+		returnOsuFile.FirstBpm = 60000.0 / returnOsuFile.TimingPoints.TimingPoints[0].BeatLength
+	}
+
+	if len(returnOsuFile.HitObjects.List) != 0 {
+		hitObjectCount := len(returnOsuFile.HitObjects.List)
+		totalLength := int64((returnOsuFile.HitObjects.List[hitObjectCount-1].Time - returnOsuFile.HitObjects.List[0].Time) / 1000)
+
+		breakTime := int32(0)
+
+		for _, event := range returnOsuFile.Events.Events {
+			if event.EventType == EventTypeBreak {
+				breakTime += event.BreakTimeEnd - event.BreakTimeBegin
+			}
+		}
+
+		breakTime /= 1000
+
+		returnOsuFile.DrainLength = totalLength - int64(breakTime)
+		returnOsuFile.Length = totalLength
 	}
 
 	return returnOsuFile, nil
